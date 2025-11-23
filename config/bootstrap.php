@@ -70,6 +70,19 @@ $container[\Nurtjahjo\StoremgmCA\Domain\Repository\CartRepositoryInterface::clas
     $prefix . 'cart_items'
 );
 
+// Binding Services
+$container[\Nurtjahjo\StoremgmCA\Domain\Service\CurrencyConverterInterface::class] = new \Nurtjahjo\StoremgmCA\Infrastructure\Service\ApiCurrencyConverter();
+
+// Kita butuh Logger untuk Payment Gateway
+$container[\Nurtjahjo\StoremgmCA\Domain\Service\PaymentGatewayInterface::class] = new \Nurtjahjo\StoremgmCA\Infrastructure\Service\MidtransPaymentGateway($container[\Nurtjahjo\StoremgmCA\Domain\Service\LoggerInterface::class]);
+
+// Binding Order Repository
+$container[\Nurtjahjo\StoremgmCA\Domain\Repository\OrderRepositoryInterface::class] = new \Nurtjahjo\StoremgmCA\Infrastructure\Repository\OrderPdoRepository(
+    $pdo,
+    $prefix . 'orders',
+    $prefix . 'order_items'
+);
+
 // Tambahkan binding repository lain di sini nanti (Order, dll)
 // $container[CartRepositoryInterface::class] = new CartPdoRepository($pdo, $prefix . 'carts');
 
