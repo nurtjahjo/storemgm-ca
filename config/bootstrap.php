@@ -63,7 +63,14 @@ $container[ProductRepositoryInterface::class] = new ProductPdoRepository(
     $prefix . 'categories'
 );
 
-// Tambahkan binding repository lain di sini nanti (Cart, Order, dll)
+// Tambahkan binding CartRepository
+$container[\Nurtjahjo\StoremgmCA\Domain\Repository\CartRepositoryInterface::class] = new \Nurtjahjo\StoremgmCA\Infrastructure\Repository\CartPdoRepository(
+    $pdo,
+    $prefix . 'carts',
+    $prefix . 'cart_items'
+);
+
+// Tambahkan binding repository lain di sini nanti (Order, dll)
 // $container[CartRepositoryInterface::class] = new CartPdoRepository($pdo, $prefix . 'carts');
 
 
