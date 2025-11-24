@@ -11,7 +11,8 @@ class OrderItem
         private string $orderId,
         private string $productId,
         private int $quantity,
-        private Money $priceAtPurchase // Harga saat dibeli (penting untuk histori)
+        private Money $priceAtPurchase,
+        private string $purchaseType = 'buy' // 'buy' or 'rent'
     ) {}
 
     public function getId(): string { return $this->id; }
@@ -19,4 +20,5 @@ class OrderItem
     public function getProductId(): string { return $this->productId; }
     public function getQuantity(): int { return $this->quantity; }
     public function getPriceAtPurchase(): Money { return $this->priceAtPurchase; }
+    public function getPurchaseType(): string { return $this->purchaseType; }
 }

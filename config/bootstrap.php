@@ -130,3 +130,9 @@ $container['resolve'] = function (string $class) use (&$container) {
 };
 
 return $container;
+
+// Binding User Library Repository (Ditambahkan Otomatis)
+$container[\Nurtjahjo\StoremgmCA\Domain\Repository\UserLibraryRepositoryInterface::class] = new \Nurtjahjo\StoremgmCA\Infrastructure\Repository\UserLibraryPdoRepository(
+    $pdo,
+    $prefix . 'user_library'
+);

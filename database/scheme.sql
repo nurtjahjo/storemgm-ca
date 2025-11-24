@@ -1,31 +1,16 @@
--- phpMyAdmin SQL Dump
--- version 5.2.2
--- https://www.phpmyadmin.net/
---
--- Host: localhost
--- Generation Time: Nov 15, 2025 at 12:00 PM
--- Server version: 10.6.22-MariaDB-0ubuntu0.22.04.1
--- PHP Version: 8.2.29
+-- phpMyAdmin SQL Dump (UPDATED FOR RENT & LIBRARY)
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
 
---
--- Database: `storemgm_db`
---
-
 -- --------------------------------------------------------
-
---
--- Struktur tabel untuk `storemgm_categories`
--- Setiap kategori spesifik untuk satu bahasa.
---
+-- Tabel Kategori
 CREATE TABLE IF NOT EXISTS `storemgm_categories` (
   `id` char(36) NOT NULL COMMENT 'UUID',
   `language` enum('en','id') NOT NULL,
   `name` varchar(100) NOT NULL,
-  `slug` varchar(120) NOT NULL COMMENT 'Untuk URL-friendly identifier, unik per bahasa',
+  `slug` varchar(120) NOT NULL,
   `description` text DEFAULT NULL,
   `display_order` int(3) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -35,23 +20,28 @@ CREATE TABLE IF NOT EXISTS `storemgm_categories` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
-
---
--- Struktur tabel untuk `storemgm_products`
--- Setiap baris adalah produk unik dalam satu bahasa spesifik.
---
+-- Tabel Produk (Update: Ada opsi sewa)
 CREATE TABLE IF NOT EXISTS `storemgm_products` (
   `id` char(36) NOT NULL COMMENT 'UUID',
-  `category_id` char(36) NOT NULL COMMENT 'FK ke storemgm_categories',
+  `category_id` char(36) NOT NULL,
   `language` enum('en','id') NOT NULL,
   `type` enum('ebook','audiobook') NOT NULL,
   `title` varchar(255) NOT NULL,
   `synopsis` text DEFAULT NULL,
-  `author_id` char(36) NOT NULL COMMENT 'FK ke users.id di usermgm',
-  `narrator_id` char(36) DEFAULT NULL COMMENT 'FK ke users.id di usermgm, nullable untuk ebook',
-  `cover_image_path` varchar(255) DEFAULT NULL COMMENT 'Path relatif ke file gambar sampul',
-  `profile_audio_path` varchar(255) DEFAULT NULL COMMENT 'Path ke file audio profil/sampel buku',
-  `price_usd` decimal(10,2) NOT NULL COMMENT 'Harga dalam USD sebagai sumber kebenaran',
+  `author_id` char(36) NOT NULL,
+  `narrator_id` char(36) DEFAULT NULL,
+  `cover_image_path` varchar(255) DEFAULT NULL,
+  `profile_audio_path` varchar(255) DEFAULT NULL,
+  `source_file_path` varchar(255) DEFAULT NULL COMMENT 'Master file EPUB/ZIP',
+  
+  -- Harga Beli
+  `price_usd` decimal(10,2) NOT NULL,
+  
+  -- Opsi Sewa
+  `can_rent` tinyint(1) NOT NULL DEFAULT 0,
+  `rental_price_usd` decimal(10,2) DEFAULT NULL,
+  `rental_duration_days` int unsigned DEFAULT NULL,
+
   `tags` varchar(512) DEFAULT NULL,
   `status` enum('draft','in_review','published','rejected','archived') NOT NULL DEFAULT 'draft',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -59,23 +49,18 @@ CREATE TABLE IF NOT EXISTS `storemgm_products` (
   `published_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `author_id` (`author_id`),
-  KEY `narrator_id` (`narrator_id`),
   KEY `category_id` (`category_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
-
---
--- Struktur tabel untuk `storemgm_product_contents`
--- Konten per bab dari sebuah produk.
---
+-- Tabel Konten (Bab)
 CREATE TABLE IF NOT EXISTS `storemgm_product_contents` (
-  `id` char(36) NOT NULL COMMENT 'UUID',
+  `id` char(36) NOT NULL,
   `product_id` char(36) NOT NULL,
-  `title` varchar(255) NOT NULL COMMENT 'Judul Bab',
+  `title` varchar(255) NOT NULL,
   `chapter_order` int(5) NOT NULL DEFAULT 0,
-  `content_text_path` varchar(255) DEFAULT NULL COMMENT 'Path ke file naskah (md/txt/html)',
-  `content_audio_path` varchar(255) DEFAULT NULL COMMENT 'Path ke file audio bab',
+  `content_text_path` varchar(255) DEFAULT NULL,
+  `content_audio_path` varchar(255) DEFAULT NULL,
   `word_count` int(10) UNSIGNED DEFAULT 0,
   `duration_seconds` int(10) UNSIGNED DEFAULT 0,
   `status` enum('draft','pending_review','approved','revision_needed') NOT NULL DEFAULT 'draft',
@@ -86,13 +71,9 @@ CREATE TABLE IF NOT EXISTS `storemgm_product_contents` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
-
---
--- Struktur tabel untuk `storemgm_customer_profiles`
--- Menyimpan data spesifik pelanggan yang hanya relevan untuk domain toko.
---
+-- Tabel Customer Profiles
 CREATE TABLE IF NOT EXISTS `storemgm_customer_profiles` (
-  `user_id` char(36) NOT NULL COMMENT 'PK dan FK ke usermgm.users.id',
+  `user_id` char(36) NOT NULL,
   `billing_address` text DEFAULT NULL,
   `shipping_address` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -101,15 +82,11 @@ CREATE TABLE IF NOT EXISTS `storemgm_customer_profiles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
-
---
--- Struktur tabel untuk `storemgm_carts`
--- Wadah untuk keranjang belanja, baik milik guest maupun user terdaftar.
---
+-- Tabel Keranjang (Cart)
 CREATE TABLE IF NOT EXISTS `storemgm_carts` (
-  `id` char(36) NOT NULL COMMENT 'UUID untuk keranjang',
-  `user_id` char(36) DEFAULT NULL COMMENT 'FK ke usermgm.users.id, NULL untuk guest',
-  `guest_cart_id` char(36) DEFAULT NULL COMMENT 'Identifier untuk guest cart',
+  `id` char(36) NOT NULL,
+  `user_id` char(36) DEFAULT NULL,
+  `guest_cart_id` char(36) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
@@ -118,31 +95,25 @@ CREATE TABLE IF NOT EXISTS `storemgm_carts` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
-
---
--- Struktur tabel untuk `storemgm_cart_items`
--- Item-item yang ada di dalam sebuah keranjang belanja.
---
+-- Tabel Item Keranjang (Update: Ada purchase_type)
 CREATE TABLE IF NOT EXISTS `storemgm_cart_items` (
   `id` char(36) NOT NULL,
   `cart_id` char(36) NOT NULL,
   `product_id` char(36) NOT NULL,
   `quantity` int(5) UNSIGNED NOT NULL DEFAULT 1,
+  `purchase_type` enum('buy','rent') NOT NULL DEFAULT 'buy',
   `added_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `cart_product_unique` (`cart_id`, `product_id`),
-  KEY `product_id` (`product_id`)
+  UNIQUE KEY `cart_prod_type_unique` (`cart_id`, `product_id`, `purchase_type`),
+  CONSTRAINT `fk_item_cart` FOREIGN KEY (`cart_id`) REFERENCES `storemgm_carts` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_item_product` FOREIGN KEY (`product_id`) REFERENCES `storemgm_products` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
-
---
--- Struktur tabel untuk `storemgm_orders`
--- Mencatat semua transaksi/pesanan yang telah dibuat.
---
+-- Tabel Pesanan (Orders)
 CREATE TABLE IF NOT EXISTS `storemgm_orders` (
-  `id` char(36) NOT NULL COMMENT 'UUID',
-  `user_id` char(36) NOT NULL COMMENT 'FK ke usermgm.users.id',
+  `id` char(36) NOT NULL,
+  `user_id` char(36) NOT NULL,
   `total_price_usd` decimal(10,2) NOT NULL,
   `total_price_idr` decimal(15,2) DEFAULT NULL,
   `exchange_rate` decimal(15,6) DEFAULT NULL,
@@ -155,42 +126,36 @@ CREATE TABLE IF NOT EXISTS `storemgm_orders` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
-
---
--- Struktur tabel untuk `storemgm_order_items`
--- Detail item untuk setiap pesanan. Menyimpan harga saat pembelian untuk akurasi historis.
---
+-- Tabel Item Pesanan (Update: Ada purchase_type)
 CREATE TABLE IF NOT EXISTS `storemgm_order_items` (
   `id` char(36) NOT NULL,
   `order_id` char(36) NOT NULL,
   `product_id` char(36) NOT NULL,
   `quantity` int(5) UNSIGNED NOT NULL,
   `price_usd_at_purchase` decimal(10,2) NOT NULL,
+  `purchase_type` enum('buy','rent') NOT NULL DEFAULT 'buy',
   PRIMARY KEY (`id`),
   KEY `order_id` (`order_id`),
-  KEY `product_id` (`product_id`)
+  KEY `product_id` (`product_id`),
+  CONSTRAINT `fk_orderitem_order` FOREIGN KEY (`order_id`) REFERENCES `storemgm_orders` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_orderitem_product` FOREIGN KEY (`product_id`) REFERENCES `storemgm_products` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
 -- --------------------------------------------------------
---
--- Constraints for dumped tables
---
--- --------------------------------------------------------
-
-
-ALTER TABLE `storemgm_products`
-  ADD CONSTRAINT `fk_product_category` FOREIGN KEY (`category_id`) REFERENCES `storemgm_categories` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
-ALTER TABLE `storemgm_product_contents`
-  ADD CONSTRAINT `fk_content_product` FOREIGN KEY (`product_id`) REFERENCES `storemgm_products` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
-ALTER TABLE `storemgm_cart_items`
-  ADD CONSTRAINT `fk_item_cart` FOREIGN KEY (`cart_id`) REFERENCES `storemgm_carts` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_item_product` FOREIGN KEY (`product_id`) REFERENCES `storemgm_products` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
-ALTER TABLE `storemgm_order_items`
-  ADD CONSTRAINT `fk_orderitem_order` FOREIGN KEY (`order_id`) REFERENCES `storemgm_orders` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `fk_orderitem_product` FOREIGN KEY (`product_id`) REFERENCES `storemgm_products` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+-- Tabel User Library (BARU: Tempat Cek Akses/Otorisasi)
+CREATE TABLE IF NOT EXISTS `storemgm_user_library` (
+  `id` char(36) NOT NULL,
+  `user_id` char(36) NOT NULL,
+  `product_id` char(36) NOT NULL,
+  `source_order_id` char(36) NOT NULL,
+  `access_type` enum('owned', 'rented') NOT NULL,
+  `started_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `expires_at` timestamp NULL DEFAULT NULL COMMENT 'NULL = Seumur hidup, Ada Tanggal = Sewa',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  KEY `access_check` (`user_id`, `product_id`, `expires_at`),
+  CONSTRAINT `fk_lib_prod` FOREIGN KEY (`product_id`) REFERENCES `storemgm_products` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_lib_ord` FOREIGN KEY (`source_order_id`) REFERENCES `storemgm_orders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 COMMIT;
