@@ -13,7 +13,7 @@ use PDO;
 class StreamProductContentUseCase
 {
     public function __construct(
-        private UserLibraryRepositoryInterface $libraryRepo, // <-- Pake ini sekarang
+        private UserLibraryRepositoryInterface $libraryRepo,
         private ProductRepositoryInterface $productRepo,
         private StorageServiceInterface $storageService,
         private LoggerInterface $logger,
@@ -22,7 +22,7 @@ class StreamProductContentUseCase
 
     public function execute(string $userId, string $productId, ?string $contentId, string $type)
     {
-        // 1. Validasi Akses (Cek Tabel User Library, bukan Order)
+        // 1. Validasi Akses (Cek Tabel User Library)
         $access = $this->libraryRepo->findValidAccess($userId, $productId);
 
         if (!$access) {
@@ -54,6 +54,7 @@ class StreamProductContentUseCase
         if (empty($relativePath)) throw new RuntimeException("File path unavailable.");
 
         // 3. Stream dari Private Storage
+        // Pastikan path tidak diawali slash ganda jika data DB sudah punya prefix
         return $this->storageService->getPrivateContent($relativePath);
     }
 }

@@ -15,7 +15,7 @@ class Order
         private Money $totalPriceUsd,
         private ?float $totalPriceIdr = null,
         private ?float $exchangeRate = null,
-        private string $status = 'pending', // pending, completed, failed
+        private string $status = 'pending', 
         private ?string $paymentGatewayTransactionId = null,
         private ?\DateTime $createdAt = null,
         private ?\DateTime $updatedAt = null
@@ -33,6 +33,12 @@ class Order
     public function setPaymentGatewayTransactionId(string $id): void 
     {
         $this->paymentGatewayTransactionId = $id;
+    }
+
+    public function setStatus(string $status): void
+    {
+        // Di sini bisa ditambahkan validasi transisi status (FSM)
+        $this->status = $status;
     }
 
     public function setItems(array $items): void
