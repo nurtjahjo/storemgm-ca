@@ -1,0 +1,11 @@
+# prevent merge to other branch
+.vscode/ export-ignore
+config/ export-ignore
+database/ export-ignore
+docs/ export-ignore
+public/ export-ignore
+storage/ export-ignore
+tests/ export-ignore
+vendor/ export-ignore
+.gitattributes
+composer.json
