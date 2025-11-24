@@ -31,8 +31,23 @@ class GetProductDetailsUseCaseTest extends TestCase
     {
         $productId = 'prod-123';
         $mockProduct = new Product(
-            $productId, 'cat-1', 'en', 'ebook', 'Test Book', 'Desc', 'auth-1', null, null, null, 
-            new Money(10, 'USD')
+            id: $productId,
+            categoryId: 'cat-1',
+            language: 'en',
+            type: 'ebook',
+            title: 'Test Book',
+            synopsis: 'Desc',
+            authorId: 'auth-1',
+            narratorId: null,
+            coverImagePath: null,
+            profileAudioPath: null,
+            sourceFilePath: null,
+            priceUsd: new Money(10, 'USD'),
+            canRent: false,
+            rentalPriceUsd: null,
+            rentalDurationDays: null,
+            tags: null,
+            status: 'published'
         );
 
         $this->productRepository->expects($this->once())
@@ -49,14 +64,11 @@ class GetProductDetailsUseCaseTest extends TestCase
     public function test_it_throws_exception_when_product_not_found()
     {
         $productId = 'missing-id';
-
-        // Expectation: Repo return null
         $this->productRepository->expects($this->once())
             ->method('findById')
             ->with($productId)
             ->willReturn(null);
 
-        // Assert: Harus lempar exception ProductNotFoundException
         $this->expectException(ProductNotFoundException::class);
 
         $this->useCase->execute($productId);

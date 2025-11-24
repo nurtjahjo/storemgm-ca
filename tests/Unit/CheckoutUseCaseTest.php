@@ -30,7 +30,6 @@ class CheckoutUseCaseTest extends TestCase
 
     protected function setUp(): void
     {
-        // Mock semua dependensi
         $this->cartRepo = $this->createMock(CartRepositoryInterface::class);
         $this->orderRepo = $this->createMock(OrderRepositoryInterface::class);
         $this->productRepo = $this->createMock(ProductRepositoryInterface::class);
@@ -48,34 +47,50 @@ class CheckoutUseCaseTest extends TestCase
         );
     }
 
+    private function createMockProduct(string $id, float $price): Product
+    {
+        return new Product(
+            id: $id,
+            categoryId: 'cat-1',
+            language: 'en',
+            type: 'ebook',
+            title: 'Book Title',
+            synopsis: 'Desc',
+            authorId: 'auth-1',
+            narratorId: null,
+            coverImagePath: null,
+            profileAudioPath: null,
+            sourceFilePath: null,
+            priceUsd: new Money($price, 'USD'),
+            canRent: false,
+            rentalPriceUsd: null,
+            rentalDurationDays: null,
+            tags: null,
+            status: 'published'
+        );
+    }
+
     public function test_throws_exception_if_cart_is_empty()
     {
         $this->expectException(CartIsEmptyException::class);
-
-        // Skenario: Cart tidak ditemukan atau item kosong
         $this->cartRepo->method('findByUserId')->willReturn(new Cart('cart-1', 'user-1', null)); 
-
-        $this->useCase->execute('user-1', 'en', []);
+        $this->useCase->execute('user-1', 'en');
     }
 
     public function test_successful_checkout_flow_usd()
     {
         $userId = 'user-123';
         
-        // 1. Setup Cart dengan 1 Item
         $cart = $this->createMock(Cart::class);
         $cart->method('getId')->willReturn('cart-abc');
-        $cartItem = new CartItem('item-1', 'cart-abc', 'prod-1', 2); // Beli 2 pcs
+        $cartItem = new CartItem('item-1', 'cart-abc', 'prod-1', 2); 
         $cart->method('getItems')->willReturn([$cartItem]);
         
         $this->cartRepo->method('findByUserId')->with($userId)->willReturn($cart);
 
-        // 2. Setup Product ($10)
-        $product = new Product('prod-1', 'cat-1', 'en', 'ebook', 'Book Title', 'Desc', 'auth-1', null, null, null, new Money(10.00, 'USD'), null, 'published');
+        $product = $this->createMockProduct('prod-1', 10.00);
         $this->productRepo->method('findById')->with('prod-1')->willReturn($product);
 
-        // 3. Expectation: Order Repository Save dipanggil
-        // Total harusnya 2 * 10 = $20
         $this->orderRepo->expects($this->atLeastOnce())
             ->method('save')
             ->with($this->callback(function (Order $order) use ($userId) {
@@ -84,17 +99,14 @@ class CheckoutUseCaseTest extends TestCase
                        $order->getStatus() === 'pending';
             }));
 
-        // 4. Expectation: Payment Gateway Create Transaction dipanggil
         $mockPaymentResponse = ['redirect_url' => 'https://payment.url'];
         $this->paymentGateway->expects($this->once())
             ->method('createTransaction')
             ->willReturn($mockPaymentResponse);
 
-        // 5. Expectation: Cart Dihapus
         $this->cartRepo->expects($this->once())->method('delete')->with('cart-abc');
 
-        // Execute
-        $result = $this->useCase->execute($userId, 'en', []);
+        $result = $this->useCase->execute($userId, 'en');
 
         $this->assertArrayHasKey('order_id', $result);
         $this->assertEquals($mockPaymentResponse, $result['payment']);
@@ -104,35 +116,28 @@ class CheckoutUseCaseTest extends TestCase
     {
         $userId = 'user-idr';
         
-        // 1. Cart Item
         $cart = $this->createMock(Cart::class);
         $cart->method('getId')->willReturn('cart-abc');
         $cartItem = new CartItem('item-1', 'cart-abc', 'prod-1', 1);
         $cart->method('getItems')->willReturn([$cartItem]);
         $this->cartRepo->method('findByUserId')->willReturn($cart);
 
-        // 2. Product ($10)
-        $product = new Product('prod-1', 'cat-1', 'en', 'ebook', 'Book Title', 'Desc', 'auth-1', null, null, null, new Money(10.00, 'USD'), null, 'published');
+        $product = $this->createMockProduct('prod-1', 10.00);
         $this->productRepo->method('findById')->willReturn($product);
 
-        // 3. Setup Currency Converter
-        // Rate 1 USD = 15000 IDR
         $this->currencyConverter->expects($this->once())
             ->method('getExchangeRate')
             ->with('USD', 'IDR')
             ->willReturn(15000.0);
 
-        // 4. Expectation: Order disimpan dengan nilai IDR yang benar
         $this->orderRepo->expects($this->atLeastOnce())
             ->method('save')
             ->with($this->callback(function (Order $order) {
-                // Total USD $10, Rate 15000 -> Total IDR 150,000
                 return $order->getTotalPriceIdr() === 150000.0;
             }));
 
         $this->paymentGateway->method('createTransaction')->willReturn([]);
 
-        // Execute dengan locale 'id'
-        $this->useCase->execute($userId, 'id', []);
+        $this->useCase->execute($userId, 'id');
     }
 }

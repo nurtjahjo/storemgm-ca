@@ -22,8 +22,6 @@ class AddToCartUseCaseTest extends TestCase
 
     protected function setUp(): void
     {
-        // Kita MOCK (tiru) semua dependensi eksternal
-        // Ini membuktikan kita bisa test logic tanpa database asli
         $this->cartRepository = $this->createMock(CartRepositoryInterface::class);
         $this->productRepository = $this->createMock(ProductRepositoryInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
@@ -35,34 +33,46 @@ class AddToCartUseCaseTest extends TestCase
         );
     }
 
+    private function createMockProduct(string $id): Product
+    {
+        // Menggunakan Named Arguments agar aman dari perubahan urutan
+        return new Product(
+            id: $id,
+            categoryId: 'cat-1',
+            language: 'en',
+            type: 'ebook',
+            title: 'Title',
+            synopsis: 'Synopsis',
+            authorId: 'auth-1',
+            narratorId: null,
+            coverImagePath: null,
+            profileAudioPath: null,
+            sourceFilePath: null, // Kolom Baru
+            priceUsd: new Money(10, 'USD'),
+            canRent: false, // Kolom Baru
+            rentalPriceUsd: null, // Kolom Baru
+            rentalDurationDays: null, // Kolom Baru
+            tags: null,
+            status: 'published'
+        );
+    }
+
     public function test_throws_exception_if_product_not_found()
     {
         $this->expectException(ProductNotFoundException::class);
-
-        // Skenario: Repository produk mengembalikan null (tidak ketemu)
         $this->productRepository->method('findById')->willReturn(null);
-
         $this->useCase->execute('user-123', null, 'invalid-product-id');
     }
 
     public function test_creates_new_cart_if_user_has_none()
     {
-        // 1. Setup Mock Product (Produk harus ada)
-        $product = new Product(
-            'prod-1', 'cat-1', 'en', 'ebook', 'Title', 'Synopsis', 'auth-1', null, null, null, 
-            new Money(10, 'USD')
-        );
+        $product = $this->createMockProduct('prod-1');
         $this->productRepository->method('findById')->willReturn($product);
-
-        // 2. Setup Mock Cart (User belum punya keranjang -> return null)
         $this->cartRepository->method('findByUserId')->willReturn(null);
 
-        // 3. Expectation: Repository harus dipanggil method 'save' (buat cart baru)
-        // dan method 'addItem' (tambah barang)
         $this->cartRepository->expects($this->once())->method('save');
         $this->cartRepository->expects($this->once())->method('addItem');
 
-        // 4. Execute
         $this->useCase->execute('user-123', null, 'prod-1');
     }
 
@@ -70,49 +80,32 @@ class AddToCartUseCaseTest extends TestCase
     {
         $this->expectException(ProductAlreadyInCartException::class);
 
-        // 1. Setup Product
-        $product = new Product(
-            'prod-1', 'cat-1', 'en', 'ebook', 'Title', 'Synopsis', 'auth-1', null, null, null, 
-            new Money(10, 'USD')
-        );
+        $product = $this->createMockProduct('prod-1');
         $this->productRepository->method('findById')->willReturn($product);
 
-        // 2. Setup Existing Cart
-        // Kita buat Cart palsu yang seolah-olah sudah berisi 'prod-1'
         $cart = $this->createMock(Cart::class);
         $cart->method('getId')->willReturn('cart-abc');
-        
-        // KUNCI: Method hasProduct mengembalikan TRUE
         $cart->method('hasProduct')->with('prod-1')->willReturn(true);
 
         $this->cartRepository->method('findByUserId')->willReturn($cart);
 
-        // 3. Execute (harus error)
         $this->useCase->execute('user-123', null, 'prod-1');
     }
     
     public function test_adds_item_to_existing_cart()
     {
-        // 1. Setup Product
-        $product = new Product(
-            'prod-1', 'cat-1', 'en', 'ebook', 'Title', 'Synopsis', 'auth-1', null, null, null, 
-            new Money(10, 'USD')
-        );
+        $product = $this->createMockProduct('prod-1');
         $this->productRepository->method('findById')->willReturn($product);
 
-        // 2. Setup Existing Cart
         $cart = $this->createMock(Cart::class);
         $cart->method('getId')->willReturn('cart-abc');
-        // KUNCI: Produk BELUM ada di keranjang
         $cart->method('hasProduct')->with('prod-1')->willReturn(false);
 
         $this->cartRepository->method('findByUserId')->willReturn($cart);
 
-        // 3. Expectation: TIDAK buat cart baru (save), tapi LANGSUNG tambah item (addItem)
-        $this->cartRepository->expects($this->never())->method('save'); // Jangan panggil save
-        $this->cartRepository->expects($this->once())->method('addItem'); // Harus panggil addItem
+        $this->cartRepository->expects($this->never())->method('save');
+        $this->cartRepository->expects($this->once())->method('addItem');
 
-        // 4. Execute
         $this->useCase->execute('user-123', null, 'prod-1');
     }
 }
