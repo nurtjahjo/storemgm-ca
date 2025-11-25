@@ -32,9 +32,13 @@ class UserLibrary
         return false;
     }
 
-    // Getters...
+    // Getters Lengkap
     public function getId(): string { return $this->id; }
     public function getUserId(): string { return $this->userId; }
     public function getProductId(): string { return $this->productId; }
+    public function getSourceOrderId(): string { return $this->sourceOrderId; } // <-- Penting
+    public function getAccessType(): string { return $this->accessType; }       // <-- Penting
     public function getExpiresAt(): ?DateTime { return $this->expiresAt; }
+    public function getStartedAt(): ?DateTime { return $this->startedAt; }
+    public function isActive(): bool { return $this->isActive; }
 }

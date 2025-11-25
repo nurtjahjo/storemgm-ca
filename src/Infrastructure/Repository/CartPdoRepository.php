@@ -28,18 +28,14 @@ class CartPdoRepository implements CartRepositoryInterface
 
     private function findBy(string $field, string $value): ?Cart
     {
-        // 1. Ambil Header Cart
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->cartTable} WHERE {$field} = :val LIMIT 1");
         $stmt->execute([':val' => $value]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$row) {
-            return null;
-        }
+        if (!$row) return null;
 
         $cart = $this->mapRowToCart($row);
 
-        // 2. Ambil Items (Hydration)
         $stmtItems = $this->pdo->prepare("SELECT * FROM {$this->itemTable} WHERE cart_id = :cart_id");
         $stmtItems->execute([':cart_id' => $cart->getId()]);
         $itemRows = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
@@ -75,8 +71,9 @@ class CartPdoRepository implements CartRepositoryInterface
 
     public function addItem(CartItem $item): void
     {
-        $sql = "INSERT INTO {$this->itemTable} (id, cart_id, product_id, quantity, added_at)
-                VALUES (:id, :cart_id, :product_id, :quantity, :added_at)";
+        $sql = "INSERT INTO {$this->itemTable} 
+                (id, cart_id, product_id, quantity, purchase_type, added_at)
+                VALUES (:id, :cart_id, :product_id, :quantity, :ptype, :added_at)";
         
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
@@ -84,15 +81,29 @@ class CartPdoRepository implements CartRepositoryInterface
             ':cart_id' => $item->getCartId(),
             ':product_id' => $item->getProductId(),
             ':quantity' => $item->getQuantity(),
+            ':ptype' => $item->getPurchaseType(),
             ':added_at' => (new DateTime())->format('Y-m-d H:i:s'),
         ]);
     }
 
     public function delete(string $cartId): void
     {
-        // Hapus items dulu (meskipun CASCADE biasanya menangani ini, lebih aman eksplisit)
         $stmt = $this->pdo->prepare("DELETE FROM {$this->cartTable} WHERE id = :id");
         $stmt->execute([':id' => $cartId]);
+    }
+
+    // IMPLEMENTASI BARU: Transfer Kepemilikan (Guest -> User)
+    public function transferOwnership(string $cartId, string $newUserId): void
+    {
+        $stmt = $this->pdo->prepare("UPDATE {$this->cartTable} SET user_id = :uid, guest_cart_id = NULL, updated_at = NOW() WHERE id = :cid");
+        $stmt->execute([':uid' => $newUserId, ':cid' => $cartId]);
+    }
+
+    // IMPLEMENTASI BARU: Pindahkan Item antar Cart
+    public function moveItemToCart(string $itemId, string $targetCartId): void
+    {
+        $stmt = $this->pdo->prepare("UPDATE {$this->itemTable} SET cart_id = :tcid WHERE id = :iid");
+        $stmt->execute([':tcid' => $targetCartId, ':iid' => $itemId]);
     }
 
     private function mapRowToCart(array $row): Cart
@@ -113,6 +124,7 @@ class CartPdoRepository implements CartRepositoryInterface
             $row['cart_id'],
             $row['product_id'],
             (int) $row['quantity'],
+            $row['purchase_type'] ?? 'buy',
             new DateTime($row['added_at'])
         );
     }

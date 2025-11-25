@@ -13,6 +13,9 @@ interface CartRepositoryInterface
     public function save(Cart $cart): void;
     public function addItem(CartItem $item): void;
     
-    // Method untuk membersihkan keranjang (misal setelah checkout)
     public function delete(string $cartId): void;
+
+    // Method baru untuk Merge
+    public function transferOwnership(string $cartId, string $newUserId): void;
+    public function moveItemToCart(string $itemId, string $targetCartId): void;
 }

@@ -27,17 +27,16 @@ class UserLibraryPdoRepository implements UserLibraryRepositoryInterface
             ':id' => $item->getId(),
             ':uid' => $item->getUserId(),
             ':pid' => $item->getProductId(),
-            ':oid' => 'dummy-order', // TODO: Fix getter
-            ':type' => 'owned', // TODO: Fix getter
-            ':start' => (new DateTime())->format('Y-m-d H:i:s'),
+            ':oid' => $item->getSourceOrderId(),
+            ':type' => $item->getAccessType(),
+            ':start' => $item->getStartedAt()?->format('Y-m-d H:i:s'),
             ':expire' => $item->getExpiresAt()?->format('Y-m-d H:i:s'),
-            ':active' => 1
+            ':active' => $item->isActive() ? 1 : 0
         ]);
     }
 
     public function findValidAccess(string $userId, string $productId): ?UserLibrary
     {
-        // Query: Cari yang aktif DAN (expires_at NULL ATAU expires_at > NOW)
         $sql = "SELECT * FROM {$this->table} 
                 WHERE user_id = :uid 
                   AND product_id = :pid 
@@ -51,6 +50,24 @@ class UserLibraryPdoRepository implements UserLibraryRepositoryInterface
 
         if (!$row) return null;
 
+        return $this->mapRowToEntity($row);
+    }
+
+    public function findByUserId(string $userId): array
+    {
+        $sql = "SELECT * FROM {$this->table} 
+                WHERE user_id = :uid 
+                ORDER BY started_at DESC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':uid' => $userId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return array_map([$this, 'mapRowToEntity'], $rows);
+    }
+
+    private function mapRowToEntity(array $row): UserLibrary
+    {
         return new UserLibrary(
             $row['id'],
             $row['user_id'],

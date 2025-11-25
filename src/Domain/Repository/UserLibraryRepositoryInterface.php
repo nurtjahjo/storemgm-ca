@@ -8,8 +8,11 @@ interface UserLibraryRepositoryInterface
 {
     public function save(UserLibrary $libraryItem): void;
     
-    /**
-     * Mengembalikan item library jika user memiliki akses VALID (belum expired).
-     */
     public function findValidAccess(string $userId, string $productId): ?UserLibrary;
+    
+    /**
+     * Mengambil semua item di library user (termasuk yang expired).
+     * @return UserLibrary[]
+     */
+    public function findByUserId(string $userId): array;
 }

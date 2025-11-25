@@ -19,53 +19,47 @@ class AddToCartUseCase
         private LoggerInterface $logger
     ) {}
 
-    /**
-     * Menambahkan produk ke keranjang.
-     * 
-     * @param string|null $userId ID User jika login
-     * @param string|null $guestCartId ID Guest Cart jika belum login
-     * @param string $productId ID Produk yang akan dibeli
-     */
-    public function execute(?string $userId, ?string $guestCartId, string $productId): void
+    public function execute(?string $userId, ?string $guestCartId, string $productId, string $purchaseType = 'buy'): void
     {
-        // 1. Validasi Produk (Pastikan produk ada)
         $product = $this->productRepository->findById($productId);
         if (!$product) {
             throw new ProductNotFoundException("Product ID {$productId} not found.");
         }
 
-        // 2. Tentukan/Cari Keranjang
+        // TODO: Bisa tambahkan validasi disini, misal jika purchaseType='rent' tapi product->canRent() false, throw error.
+
         $cart = null;
         if ($userId) {
             $cart = $this->cartRepository->findByUserId($userId);
         } elseif ($guestCartId) {
             $cart = $this->cartRepository->findByGuestId($guestCartId);
         } else {
-            // Kasus langka: tidak ada user ID dan tidak ada guest ID yang dikirim frontend
-            // Seharusnya frontend meng-generate UUID guest jika user belum login.
-            // Kita bisa throw exception atau generate baru di sini.
             $guestCartId = Uuid::uuid4()->toString();
         }
 
-        // 3. Jika keranjang belum ada, Buat Baru
         if (!$cart) {
             $cartId = Uuid::uuid4()->toString();
             $cart = new Cart($cartId, $userId, $guestCartId);
             $this->cartRepository->save($cart);
-            $this->logger->log("Created new cart: {$cartId} (User: " . ($userId ?? 'Guest') . ")", 'INFO');
         }
 
-        // 4. Cek apakah produk sudah ada di keranjang (Produk Digital = Max 1)
         if ($cart->hasProduct($productId)) {
             throw new ProductAlreadyInCartException();
         }
 
-        // 5. Tambahkan Item
         $cartItemId = Uuid::uuid4()->toString();
-        $item = new CartItem($cartItemId, $cart->getId(), $productId, 1);
+        
+        // UPDATE: Masukkan purchaseType ke Entity CartItem
+        $item = new CartItem(
+            id: $cartItemId, 
+            cartId: $cart->getId(), 
+            productId: $productId, 
+            quantity: 1, 
+            purchaseType: $purchaseType
+        );
         
         $this->cartRepository->addItem($item);
         
-        $this->logger->log("Added product {$productId} to cart {$cart->getId()}", 'INFO');
+        $this->logger->log("Added product {$productId} ({$purchaseType}) to cart", 'INFO');
     }
 }
