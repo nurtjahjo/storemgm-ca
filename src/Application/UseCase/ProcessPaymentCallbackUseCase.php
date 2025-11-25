@@ -1,12 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nurtjahjo\StoremgmCA\Application\UseCase;
 
 use Nurtjahjo\StoremgmCA\Domain\Repository\OrderRepositoryInterface;
 use Nurtjahjo\StoremgmCA\Domain\Repository\UserLibraryRepositoryInterface;
 use Nurtjahjo\StoremgmCA\Domain\Repository\ProductRepositoryInterface;
 use Nurtjahjo\StoremgmCA\Domain\Service\LoggerInterface;
+use Nurtjahjo\StoremgmCA\Domain\Service\PaymentGatewayInterface; // NEW Dependency
 use Nurtjahjo\StoremgmCA\Domain\Entity\UserLibrary;
+use Nurtjahjo\StoremgmCA\Domain\Entity\Order;
+use Nurtjahjo\StoremgmCA\Domain\Exception\InvalidSignatureException;
 use Ramsey\Uuid\Uuid;
 use DateTime;
 use RuntimeException;
@@ -17,83 +22,75 @@ class ProcessPaymentCallbackUseCase
         private OrderRepositoryInterface $orderRepo,
         private UserLibraryRepositoryInterface $libraryRepo,
         private ProductRepositoryInterface $productRepo,
-        private LoggerInterface $logger
+        private PaymentGatewayInterface $paymentGateway, // NEW
+        private LoggerInterface $logger,
+        private string $serverKey // Injected via Bootstrap
     ) {}
 
-    /**
-     * Memproses notifikasi pembayaran.
-     * @param array $data Data webhook dari payment gateway (order_id, transaction_status, dll)
-     */
     public function execute(array $data): void
     {
-        // 1. Ekstrak Data Penting (Sesuaikan dengan format Midtrans/Gateway Anda)
-        // Asumsi: $data['order_id'] dan $data['transaction_status']
+        // 1. SECURITY: Validate Signature
+        if (!$this->paymentGateway->validateSignature($data, $this->serverKey)) {
+            $this->logger->log("Invalid Webhook Signature detected.", 'CRITICAL');
+            throw new InvalidSignatureException("Security check failed.");
+        }
+
         $orderId = $data['order_id'] ?? null;
         $status = $data['transaction_status'] ?? null;
 
         if (!$orderId || !$status) {
-            throw new RuntimeException("Invalid callback data.");
+            throw new RuntimeException("Invalid callback data structure.");
         }
 
-        // 2. Cari Order
         $order = $this->orderRepo->findById($orderId);
         if (!$order) {
-            $this->logger->log("Callback received for unknown Order ID: $orderId", 'ERROR');
+            $this->logger->log("Callback for unknown Order ID: $orderId", 'ERROR');
             throw new RuntimeException("Order not found.");
         }
 
-        // 3. Tentukan Status Order Baru (Simplifikasi logika Midtrans)
-        // settlement/capture -> sukses
-        // deny/expire/cancel -> gagal
         $isSuccess = in_array($status, ['capture', 'settlement']);
         $isFailed = in_array($status, ['deny', 'expire', 'cancel']);
 
         if ($isSuccess && $order->getStatus() !== 'completed') {
-            // --- PROSES SUKSES: GRANT ACCESS ---
-            
             $this->grantAccessToUser($order);
             
-            // Update Status Order
-            $order->setStatus('completed'); // atau 'paid'
+            $order->setStatus('completed');
             $this->orderRepo->save($order);
             
-            $this->logger->log("Order $orderId completed. Access granted.", 'INFO');
+            $this->logger->log("Order $orderId completed successfully.", 'INFO');
 
         } elseif ($isFailed) {
             $order->setStatus('failed');
             $this->orderRepo->save($order);
-            $this->logger->log("Order $orderId marked as failed.", 'INFO');
+            $this->logger->log("Order $orderId failed.", 'INFO');
         }
     }
 
-    private function grantAccessToUser($order): void
+    private function grantAccessToUser(Order $order): void
     {
         foreach ($order->getItems() as $item) {
             $product = $this->productRepo->findById($item->getProductId());
             if (!$product) continue;
 
-            $purchaseType = $item->getPurchaseType(); // 'buy' or 'rent'
-            
+            $purchaseType = $item->getPurchaseType();
             $expiresAt = null;
             $accessType = 'owned';
 
-            // Logika Sewa
             if ($purchaseType === 'rent') {
                 $accessType = 'rented';
-                $duration = $product->getRentalDurationDays() ?? 30; // Default 30 hari jika null
+                $duration = $product->getRentalDurationDays() ?? 30;
                 $expiresAt = (new DateTime())->modify("+$duration days");
             }
 
-            // Buat Entry di User Library
             $libraryItem = new UserLibrary(
                 Uuid::uuid4()->toString(),
                 $order->getUserId(),
                 $item->getProductId(),
                 $order->getId(),
                 $accessType,
-                new DateTime(), // started_at
+                new DateTime(),
                 $expiresAt,
-                true // is_active
+                true
             );
 
             $this->libraryRepo->save($libraryItem);

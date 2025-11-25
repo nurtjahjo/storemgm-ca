@@ -7,6 +7,7 @@ use Nurtjahjo\StoremgmCA\Application\UseCase\ProcessPaymentCallbackUseCase;
 use Nurtjahjo\StoremgmCA\Domain\Repository\OrderRepositoryInterface;
 use Nurtjahjo\StoremgmCA\Domain\Repository\UserLibraryRepositoryInterface;
 use Nurtjahjo\StoremgmCA\Domain\Repository\ProductRepositoryInterface;
+use Nurtjahjo\StoremgmCA\Domain\Service\PaymentGatewayInterface; // <-- Tambahan Baru
 use Nurtjahjo\StoremgmCA\Domain\Service\LoggerInterface;
 use Nurtjahjo\StoremgmCA\Domain\Entity\Order;
 use Nurtjahjo\StoremgmCA\Domain\Entity\OrderItem;
@@ -20,6 +21,7 @@ class ProcessPaymentCallbackUseCaseTest extends TestCase
     private $orderRepo;
     private $libraryRepo;
     private $productRepo;
+    private $paymentGateway; // <-- Tambahan Baru
     private $logger;
     private $useCase;
 
@@ -28,18 +30,24 @@ class ProcessPaymentCallbackUseCaseTest extends TestCase
         $this->orderRepo = $this->createMock(OrderRepositoryInterface::class);
         $this->libraryRepo = $this->createMock(UserLibraryRepositoryInterface::class);
         $this->productRepo = $this->createMock(ProductRepositoryInterface::class);
+        $this->paymentGateway = $this->createMock(PaymentGatewayInterface::class); // <-- Mock Baru
         $this->logger = $this->createMock(LoggerInterface::class);
 
         $this->useCase = new ProcessPaymentCallbackUseCase(
             $this->orderRepo,
             $this->libraryRepo,
             $this->productRepo,
-            $this->logger
+            $this->paymentGateway, // <-- Argumen ke-4
+            $this->logger,         // <-- Argumen ke-5
+            'mock-server-key'      // <-- Argumen ke-6 (String Key)
         );
     }
 
     public function test_throws_exception_if_order_not_found()
     {
+        // Bypass security check untuk test ini
+        $this->paymentGateway->method('validateSignature')->willReturn(true);
+
         $this->orderRepo->method('findById')->willReturn(null);
         
         $this->expectException(RuntimeException::class);
@@ -50,6 +58,9 @@ class ProcessPaymentCallbackUseCaseTest extends TestCase
 
     public function test_marks_order_as_failed_on_failure_callback()
     {
+        // Bypass security check
+        $this->paymentGateway->method('validateSignature')->willReturn(true);
+
         $order = $this->createMock(Order::class);
         $order->method('getId')->willReturn('ord-1');
         
@@ -67,6 +78,9 @@ class ProcessPaymentCallbackUseCaseTest extends TestCase
 
     public function test_grants_permanent_access_for_buy_purchase()
     {
+        // Bypass security check
+        $this->paymentGateway->method('validateSignature')->willReturn(true);
+
         // 1. Setup Order & Items
         $order = $this->createMock(Order::class);
         $order->method('getId')->willReturn('ord-1');
@@ -99,6 +113,9 @@ class ProcessPaymentCallbackUseCaseTest extends TestCase
 
     public function test_grants_temporary_access_for_rent_purchase()
     {
+        // Bypass security check
+        $this->paymentGateway->method('validateSignature')->willReturn(true);
+
         // 1. Setup Order & Items
         $order = $this->createMock(Order::class);
         $order->method('getId')->willReturn('ord-1');
@@ -130,6 +147,9 @@ class ProcessPaymentCallbackUseCaseTest extends TestCase
 
     public function test_ignores_callback_if_order_already_completed()
     {
+        // Bypass security check
+        $this->paymentGateway->method('validateSignature')->willReturn(true);
+
         // Idempotency Check
         $order = $this->createMock(Order::class);
         $order->method('getStatus')->willReturn('completed'); // Sudah selesai

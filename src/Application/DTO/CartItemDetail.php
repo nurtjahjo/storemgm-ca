@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nurtjahjo\StoremgmCA\Application\DTO;
 
 class CartItemDetail
@@ -12,6 +14,7 @@ class CartItemDetail
         public float $pricePerUnit,
         public float $totalPrice,
         public string $purchaseType, // 'buy' or 'rent'
-        public string $type // 'ebook' or 'audiobook'
+        public string $type, // 'ebook' or 'audiobook'
+        public ?int $rentalDurationDays // NULL jika purchaseType = 'buy'
     ) {}
 }

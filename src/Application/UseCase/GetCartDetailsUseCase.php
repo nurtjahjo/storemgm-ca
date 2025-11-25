@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Nurtjahjo\StoremgmCA\Application\UseCase;
 
 use Nurtjahjo\StoremgmCA\Domain\Repository\CartRepositoryInterface;
@@ -32,14 +34,15 @@ class GetCartDetailsUseCase
 
         foreach ($cart->getItems() as $item) {
             $product = $this->productRepo->findById($item->getProductId());
-            
-            // Jika produk dihapus/tidak aktif, kita skip dari display (atau beri tanda)
             if (!$product) continue; 
 
-            // Tentukan harga (Beli vs Sewa)
             $priceObj = $product->getPriceUsd();
+            $rentalDuration = null;
+
+            // Logika Penentuan Harga & Info Sewa
             if ($item->getPurchaseType() === 'rent' && $product->canRent()) {
                 $priceObj = $product->getRentalPriceUsd() ?? $priceObj;
+                $rentalDuration = $product->getRentalDurationDays();
             }
             
             $price = $priceObj->getAmount();
@@ -54,7 +57,8 @@ class GetCartDetailsUseCase
                 $price,
                 $total,
                 $item->getPurchaseType(),
-                $product->getType()
+                $product->getType(),
+                $rentalDuration // <-- Data Baru
             );
         }
 
