@@ -43,7 +43,6 @@ class OrderPdoRepository implements OrderRepositoryInterface
                 ':updated_at' => (new DateTime())->format('Y-m-d H:i:s'),
             ]);
 
-            // Simpan Items (biasanya hanya insert awal)
             $stmtItem = $this->pdo->prepare("INSERT IGNORE INTO {$this->itemTable} 
                 (id, order_id, product_id, quantity, price_usd_at_purchase, purchase_type)
                 VALUES (:id, :order_id, :product_id, :qty, :price, :ptype)");
@@ -68,16 +67,37 @@ class OrderPdoRepository implements OrderRepositoryInterface
 
     public function findById(string $id): ?Order
     {
-        // 1. Ambil Header
         $stmt = $this->pdo->prepare("SELECT * FROM {$this->orderTable} WHERE id = :id LIMIT 1");
         $stmt->execute([':id' => $id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$row) return null;
 
-        // 2. Ambil Items
+        return $this->hydrateOrder($row);
+    }
+
+    public function findByUserId(string $userId): array
+    {
+        // Ambil semua order milik user, urutkan dari yang terbaru
+        $stmt = $this->pdo->prepare("SELECT * FROM {$this->orderTable} WHERE user_id = :uid ORDER BY created_at DESC");
+        $stmt->execute([':uid' => $userId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $orders = [];
+        foreach ($rows as $row) {
+            $orders[] = $this->hydrateOrder($row);
+        }
+        return $orders;
+    }
+    
+    /**
+     * Helper untuk mengubah row database + items menjadi Entity Order lengkap
+     */
+    private function hydrateOrder(array $row): Order
+    {
+        // Ambil Items
         $stmtItems = $this->pdo->prepare("SELECT * FROM {$this->itemTable} WHERE order_id = :order_id");
-        $stmtItems->execute([':order_id' => $id]);
+        $stmtItems->execute([':order_id' => $row['id']]);
         $rowsItems = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
 
         $items = [];
@@ -106,24 +126,5 @@ class OrderPdoRepository implements OrderRepositoryInterface
         $order->setItems($items);
 
         return $order;
-    }
-
-    public function findByUserId(string $userId): array
-    {
-        // Implementasi nanti untuk history
-        return [];
-    }
-
-    public function hasPurchased(string $userId, string $productId): bool
-    {
-        // Menggunakan tabel user_library yang lebih cepat (Sesuai diskusi sebelumnya)
-        // Logic ini sebenarnya sudah digantikan oleh UserLibraryRepository->findValidAccess
-        // Tapi kita biarkan untuk kompatibilitas jika ada kode lama
-        $sql = "SELECT count(1) FROM storemgm_user_library 
-                WHERE user_id = :uid AND product_id = :pid AND is_active = 1
-                AND (expires_at IS NULL OR expires_at > NOW())";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':uid' => $userId, ':pid' => $productId]);
-        return (int)$stmt->fetchColumn() > 0;
     }
 }

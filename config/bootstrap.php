@@ -4,6 +4,7 @@ use Nurtjahjo\StoremgmCA\Domain\Repository\ProductRepositoryInterface;
 use Nurtjahjo\StoremgmCA\Domain\Repository\CartRepositoryInterface;
 use Nurtjahjo\StoremgmCA\Domain\Repository\OrderRepositoryInterface;
 use Nurtjahjo\StoremgmCA\Domain\Repository\UserLibraryRepositoryInterface;
+use Nurtjahjo\StoremgmCA\Domain\Repository\CustomerProfileRepositoryInterface;
 use Nurtjahjo\StoremgmCA\Domain\Service\LoggerInterface;
 use Nurtjahjo\StoremgmCA\Domain\Service\StorageServiceInterface;
 use Nurtjahjo\StoremgmCA\Domain\Service\CurrencyConverterInterface;
@@ -15,6 +16,7 @@ use Nurtjahjo\StoremgmCA\Infrastructure\Repository\ProductPdoRepository;
 use Nurtjahjo\StoremgmCA\Infrastructure\Repository\CartPdoRepository;
 use Nurtjahjo\StoremgmCA\Infrastructure\Repository\OrderPdoRepository;
 use Nurtjahjo\StoremgmCA\Infrastructure\Repository\UserLibraryPdoRepository;
+use Nurtjahjo\StoremgmCA\Infrastructure\Repository\CustomerProfilePdoRepository;
 use Nurtjahjo\StoremgmCA\Infrastructure\Service\LocalStorageService;
 use Nurtjahjo\StoremgmCA\Infrastructure\Service\ApiCurrencyConverter;
 use Nurtjahjo\StoremgmCA\Infrastructure\Service\MidtransPaymentGateway;
@@ -25,7 +27,6 @@ $dbConfig = require __DIR__ . '/database.php';
 
 try {
     $pdo = ConnectionFactory::create($dbConfig);
-    // Prefix Logic (Sama seperti sebelumnya)
     $prefix = $dbConfig['connections']['usermgm-ca']['prefix'] ?? ''; 
     if (isset($dbConfig['connections']['default']['prefix'])) {
         $prefix = $dbConfig['connections']['default']['prefix'];
@@ -52,17 +53,19 @@ $container[ProductRepositoryInterface::class] = new ProductPdoRepository($pdo, $
 $container[CartRepositoryInterface::class] = new CartPdoRepository($pdo, $prefix . 'carts', $prefix . 'cart_items');
 $container[OrderRepositoryInterface::class] = new OrderPdoRepository($pdo, $prefix . 'orders', $prefix . 'order_items');
 $container[UserLibraryRepositoryInterface::class] = new UserLibraryPdoRepository($pdo, $prefix . 'user_library');
+// NEW REPO
+$container[CustomerProfileRepositoryInterface::class] = new CustomerProfilePdoRepository($pdo, $prefix . 'customer_profiles');
+
 $container[PDO::class] = $pdo;
 
-// --- MANUAL BINDING USE CASE (Yg butuh parameter khusus) ---
-// ProcessPaymentCallbackUseCase butuh $serverKey string, tidak bisa auto resolve
+// --- MANUAL BINDING USE CASE ---
 $container[ProcessPaymentCallbackUseCase::class] = new ProcessPaymentCallbackUseCase(
     $container[OrderRepositoryInterface::class],
     $container[UserLibraryRepositoryInterface::class],
     $container[ProductRepositoryInterface::class],
-    $container[PaymentGatewayInterface::class], // New param
+    $container[PaymentGatewayInterface::class],
     $container[LoggerInterface::class],
-    $appConfig['storemgm-ca']['payment_server_key'] // Injected param
+    $appConfig['storemgm-ca']['payment_server_key'] ?? 'mock-key'
 );
 
 // --- RESOLVER ---
