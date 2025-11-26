@@ -5,6 +5,8 @@ use Nurtjahjo\StoremgmCA\Domain\Repository\CartRepositoryInterface;
 use Nurtjahjo\StoremgmCA\Domain\Repository\OrderRepositoryInterface;
 use Nurtjahjo\StoremgmCA\Domain\Repository\UserLibraryRepositoryInterface;
 use Nurtjahjo\StoremgmCA\Domain\Repository\CustomerProfileRepositoryInterface;
+use Nurtjahjo\StoremgmCA\Domain\Repository\WishlistRepositoryInterface; // NEW
+
 use Nurtjahjo\StoremgmCA\Domain\Service\LoggerInterface;
 use Nurtjahjo\StoremgmCA\Domain\Service\StorageServiceInterface;
 use Nurtjahjo\StoremgmCA\Domain\Service\CurrencyConverterInterface;
@@ -17,6 +19,8 @@ use Nurtjahjo\StoremgmCA\Infrastructure\Repository\CartPdoRepository;
 use Nurtjahjo\StoremgmCA\Infrastructure\Repository\OrderPdoRepository;
 use Nurtjahjo\StoremgmCA\Infrastructure\Repository\UserLibraryPdoRepository;
 use Nurtjahjo\StoremgmCA\Infrastructure\Repository\CustomerProfilePdoRepository;
+use Nurtjahjo\StoremgmCA\Infrastructure\Repository\WishlistPdoRepository; // NEW
+
 use Nurtjahjo\StoremgmCA\Infrastructure\Service\LocalStorageService;
 use Nurtjahjo\StoremgmCA\Infrastructure\Service\ApiCurrencyConverter;
 use Nurtjahjo\StoremgmCA\Infrastructure\Service\MidtransPaymentGateway;
@@ -53,8 +57,9 @@ $container[ProductRepositoryInterface::class] = new ProductPdoRepository($pdo, $
 $container[CartRepositoryInterface::class] = new CartPdoRepository($pdo, $prefix . 'carts', $prefix . 'cart_items');
 $container[OrderRepositoryInterface::class] = new OrderPdoRepository($pdo, $prefix . 'orders', $prefix . 'order_items');
 $container[UserLibraryRepositoryInterface::class] = new UserLibraryPdoRepository($pdo, $prefix . 'user_library');
-// NEW REPO
 $container[CustomerProfileRepositoryInterface::class] = new CustomerProfilePdoRepository($pdo, $prefix . 'customer_profiles');
+// NEW
+$container[WishlistRepositoryInterface::class] = new WishlistPdoRepository($pdo, $prefix . 'wishlists');
 
 $container[PDO::class] = $pdo;
 

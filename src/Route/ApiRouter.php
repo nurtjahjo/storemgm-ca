@@ -10,6 +10,7 @@ use Nurtjahjo\StoremgmCA\Controller\Api\PaymentCallbackApiController;
 use Nurtjahjo\StoremgmCA\Controller\Api\LibraryApiController;
 use Nurtjahjo\StoremgmCA\Controller\Api\CustomerProfileApiController;
 use Nurtjahjo\StoremgmCA\Controller\Api\OrderApiController;
+use Nurtjahjo\StoremgmCA\Controller\Api\WishlistApiController; // NEW
 
 class ApiRouter
 {
@@ -36,16 +37,19 @@ class ApiRouter
             ['POST', '/api/cart/merge', [CartApiController::class, 'merge']],
             ['POST', '/api/checkout', [CartApiController::class, 'checkout']],
 
-            // Webhook
+            // Payment Webhook
             ['POST', '/api/payment/notification', [PaymentCallbackApiController::class, 'handle']],
 
-            // User Features (NEW)
+            // User Features
             ['GET', '/api/library', [LibraryApiController::class, 'index']],
-            
             ['GET', '/api/customer/profile', [CustomerProfileApiController::class, 'show']],
             ['PUT', '/api/customer/profile', [CustomerProfileApiController::class, 'update']],
-            
             ['GET', '/api/orders', [OrderApiController::class, 'index']],
+
+            // Wishlist (NEW)
+            ['GET',    '/api/wishlist', [WishlistApiController::class, 'index']],
+            ['POST',   '/api/wishlist', [WishlistApiController::class, 'add']],
+            ['DELETE', '/api/wishlist', [WishlistApiController::class, 'remove']],
 
             // Assets & Stream
             ['GET', '/api/assets/{type}/{filename}', [CatalogAssetApiController::class, 'getAsset']],
