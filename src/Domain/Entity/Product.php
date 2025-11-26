@@ -32,6 +32,7 @@ class Product
         private ?\DateTime $updatedAt = null
     ) {}
 
+    // Getters
     public function getId(): string { return $this->id; }
     public function getCategoryId(): string { return $this->categoryId; }
     public function getLanguage(): string { return $this->language; }
@@ -44,14 +45,32 @@ class Product
     public function getProfileAudioPath(): ?string { return $this->profileAudioPath; }
     public function getSourceFilePath(): ?string { return $this->sourceFilePath; }
     public function getPriceUsd(): Money { return $this->priceUsd; }
-    
     public function canRent(): bool { return $this->canRent; }
     public function getRentalPriceUsd(): ?Money { return $this->rentalPriceUsd; }
     public function getRentalDurationDays(): ?int { return $this->rentalDurationDays; }
-
     public function getTags(): array { return $this->tags ? explode(',', $this->tags) : []; }
     public function getStatus(): string { return $this->status; }
     public function isPublished(): bool { return $this->status === 'published'; }
+    public function getCreatedAt(): ?\DateTime { return $this->createdAt; }
+
+    // Setters (Untuk Update)
+    public function setCommercials(Money $price, bool $canRent, ?Money $rentPrice, ?int $rentDuration): void {
+        $this->priceUsd = $price;
+        $this->canRent = $canRent;
+        $this->rentalPriceUsd = $rentPrice;
+        $this->rentalDurationDays = $rentDuration;
+    }
+
+    public function setSourceFilePath(string $path): void {
+        $this->sourceFilePath = $path;
+    }
+
+    public function setStatus(string $status): void {
+        $this->status = $status;
+        if ($status === 'published' && $this->publishedAt === null) {
+            $this->publishedAt = new \DateTime();
+        }
+    }
 
     public function toArray(): array
     {
