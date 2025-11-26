@@ -1,0 +1,34 @@
+# File lingkungan dan sensitif
+.env
+.env.example
+config/database.php  # Jika ada konfigurasi DB
+
+# Dependency dan autoload
+vendor/
+composer.lock
+
+# File sistem dan IDE
+.idea/
+# .vscode/
+*.swp
+.DS_Store
+
+# Log dan cache
+storage/logs/
+*.log
+cache/
+*.cache
+results.xml
+
+# File hasil build
+dist/
+build/
+
+docs/private/
+docs/codebase/
+*.sh
+
+# File covers + audio + naskah
+storage/app/
+master_migration.php
+patch_published_at.php
