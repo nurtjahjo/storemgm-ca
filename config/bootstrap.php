@@ -98,3 +98,9 @@ $container['resolve'] = function (string $class) use (&$container) {
 };
 
 return $container;
+
+// Binding ProductContent Repository
+$container[\Nurtjahjo\StoremgmCA\Domain\Repository\ProductContentRepositoryInterface::class] = new \Nurtjahjo\StoremgmCA\Infrastructure\Repository\ProductContentPdoRepository(
+    $pdo,
+    $prefix . 'product_contents'
+);
