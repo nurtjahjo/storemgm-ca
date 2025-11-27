@@ -21,12 +21,12 @@ class ProductPdoRepository implements ProductRepositoryInterface
     {
         $sql = "INSERT INTO {$this->table} 
                 (id, category_id, language, type, title, synopsis, author_id, narrator_id, 
-                 cover_image_path, profile_audio_path, source_file_path, 
+                 cover_image_path, profile_audio_path, source_file_path, closing_text, closing_audio_path,
                  price_usd, can_rent, rental_price_usd, rental_duration_days,
                  tags, status, created_at, updated_at, published_at)
                 VALUES 
                 (:id, :category_id, :language, :type, :title, :synopsis, :author_id, :narrator_id, 
-                 :cover_path, :profile_path, :source_path, 
+                 :cover_path, :profile_path, :source_path, :close_txt, :close_aud,
                  :price, :can_rent, :rent_price, :rent_days,
                  :tags, :status, :created_at, :updated_at, :published_at)
                 ON DUPLICATE KEY UPDATE
@@ -36,6 +36,8 @@ class ProductPdoRepository implements ProductRepositoryInterface
                 cover_image_path = VALUES(cover_image_path),
                 profile_audio_path = VALUES(profile_audio_path),
                 source_file_path = VALUES(source_file_path),
+                closing_text = VALUES(closing_text),
+                closing_audio_path = VALUES(closing_audio_path),
                 price_usd = VALUES(price_usd),
                 can_rent = VALUES(can_rent),
                 rental_price_usd = VALUES(rental_price_usd),
@@ -62,6 +64,8 @@ class ProductPdoRepository implements ProductRepositoryInterface
             ':cover_path' => $product->getCoverImagePath(),
             ':profile_path' => $product->getProfileAudioPath(),
             ':source_path' => $product->getSourceFilePath(),
+            ':close_txt' => $product->getClosingText(),
+            ':close_aud' => $product->getClosingAudioPath(),
             ':price' => $product->getPriceUsd()->getAmount(),
             ':can_rent' => (int) $product->canRent(),
             ':rent_price' => $product->getRentalPriceUsd()?->getAmount(),
@@ -100,17 +104,13 @@ class ProductPdoRepository implements ProductRepositoryInterface
             $params[':category_id'] = $categoryId;
         }
 
-        // --- PERBAIKAN DI SINI ---
         if ($searchQuery) {
-            // Gunakan nama parameter yang berbeda untuk setiap kemunculan
             $whereClauses[] = "(title LIKE :search_title OR tags LIKE :search_tags)";
             $params[':search_title'] = "%{$searchQuery}%";
             $params[':search_tags'] = "%{$searchQuery}%";
         }
-        // --------------------------
 
         $whereSql = implode(' AND ', $whereClauses);
-
         $countSql = "SELECT COUNT(id) FROM {$this->table} WHERE {$whereSql}";
         $countStmt = $this->pdo->prepare($countSql);
         $countStmt->execute($params);
@@ -172,7 +172,10 @@ class ProductPdoRepository implements ProductRepositoryInterface
             status: $row['status'],
             publishedAt: $row['published_at'] ? new DateTime($row['published_at']) : null,
             createdAt: new DateTime($row['created_at']),
-            updatedAt: new DateTime($row['updated_at'])
+            updatedAt: new DateTime($row['updated_at']),
+            // Mapping kolom baru
+            closingText: $row['closing_text'] ?? null,
+            closingAudioPath: $row['closing_audio_path'] ?? null
         );
     }
 }

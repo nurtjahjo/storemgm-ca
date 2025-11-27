@@ -29,7 +29,11 @@ class Product
         private string $status = 'draft',
         private ?\DateTime $publishedAt = null,
         private ?\DateTime $createdAt = null,
-        private ?\DateTime $updatedAt = null
+        private ?\DateTime $updatedAt = null,
+
+        // PATCH BARU: Data Penutup (Ditaruh di akhir agar backward compatible)
+        private ?string $closingText = null,
+        private ?string $closingAudioPath = null
     ) {}
 
     // Getters
@@ -52,19 +56,19 @@ class Product
     public function getStatus(): string { return $this->status; }
     public function isPublished(): bool { return $this->status === 'published'; }
     public function getCreatedAt(): ?\DateTime { return $this->createdAt; }
+    
+    // Getters Baru
+    public function getClosingText(): ?string { return $this->closingText; }
+    public function getClosingAudioPath(): ?string { return $this->closingAudioPath; }
 
-    // Setters (Untuk Update)
+    // Setters
     public function setCommercials(Money $price, bool $canRent, ?Money $rentPrice, ?int $rentDuration): void {
         $this->priceUsd = $price;
         $this->canRent = $canRent;
         $this->rentalPriceUsd = $rentPrice;
         $this->rentalDurationDays = $rentDuration;
     }
-
-    public function setSourceFilePath(string $path): void {
-        $this->sourceFilePath = $path;
-    }
-
+    public function setSourceFilePath(string $path): void { $this->sourceFilePath = $path; }
     public function setStatus(string $status): void {
         $this->status = $status;
         if ($status === 'published' && $this->publishedAt === null) {
@@ -83,7 +87,9 @@ class Product
             'can_rent' => $this->canRent,
             'rental_price_usd' => $this->rentalPriceUsd?->getAmount(),
             'rental_duration_days' => $this->rentalDurationDays,
-            'status' => $this->status
+            'status' => $this->status,
+            'closing_text' => $this->closingText, // Expose di array
+            'closing_audio_path' => $this->closingAudioPath // Expose di array
         ];
     }
 }
